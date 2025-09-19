@@ -1,8 +1,8 @@
 import sqlite3
 from pathlib import Path
-from typing import Dict, Iterable, Tuple, List, Optional
+from typing import Dict, List
 
-DB_PATH = Path(__file__).resolve().parent.parent / "data.db"
+DB_PATH = Path(__file__).resolve().parents[1] / "data.db"
 
 def _init():
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)

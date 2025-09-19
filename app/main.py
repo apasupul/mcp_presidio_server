@@ -1,4 +1,5 @@
 import logging, logging.config, uuid
+from pathlib import Path
 from fastapi import FastAPI, HTTPException
 from app.models.schemas import (Message, AnonymizeRequest, AnonymizeResponse,
                                 DeAnonymizeRequest, DeAnonymizeResponse, SessionResponse)
@@ -6,10 +7,14 @@ from app.services.anonymizer import content_anonymizer, reverse_mapping, content
 from app.services import storage
 from collections import defaultdict
 
-logging.config.fileConfig("logging.conf")
-logger = logging.getLogger("app")
+try:
+    _CONF = Path(__file__).resolve().parents[1] / "logging.conf"
+    logging.config.fileConfig(_CONF)
+except Exception:
+    logging.basicConfig(level=logging.INFO)
 
-app = FastAPI(title="MCP Presidio Anonymizer API", version="1.0.0")
+logger = logging.getLogger("app")
+app = FastAPI(title="MCP Presidio Anonymizer API", version="1.3.0 (HMAC+DLP+Builtins)")
 
 @app.post("/session", response_model=SessionResponse)
 def new_session():
@@ -25,12 +30,10 @@ def anonymize(req: AnonymizeRequest):
     out_messages = []
     for msg in req.messages:
         anon_text, entity_mapping, entity_counter = content_anonymizer(
-            msg.content, entity_mapping, entity_counter
+            msg.content, entity_mapping, entity_counter, session_id=req.session_id
         )
         out_messages.append(Message(content=anon_text))
-
-    # Persist reverse map
-    rev = reverse_mapping(entity_mapping)  # placeholder -> original
+    rev = reverse_mapping(entity_mapping)
     storage.save_mappings(req.session_id, rev)
     return AnonymizeResponse(session_id=req.session_id, messages=out_messages)
 
