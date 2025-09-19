@@ -1,24 +1,23 @@
-# MCP Presidio Server (HMAC placeholders + DLP InfoTypes + Built-in Recognizers)
+# Presidio MCP + FastAPI Anonymize/Deanonymize (DB-free)
 
-## Install
+This variant removes all persistence. You must carry `entity_map` or `reverse_map` between calls yourself.
+
+## Run API
 ```bash
-pip install -r requirements.txt
-# Ensure spaCy model is available: en-core-web-lg==3.8.0 (from internal PyPI)
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-## Run FastAPI
-```bash
-uvicorn app.main:app --reload
-```
-- Swagger: http://127.0.0.1:8000/docs
+## Env
+- PLACEHOLDER_SECRET – set in prod for deterministic tags across restarts
 
-## Run MCP
-```bash
-python mcp_server/server.py
-```
+## MCP Tools
+Import `app.mcp.tools:mcp` in your MCP host; it exposes `anonymize` & `deanonymize` with identical behavior to the API.
 
-## Features
-- Deterministic HMAC placeholders (env: PLACEHOLDER_SECRET)
-- Custom DLP recognizers: credit cards, tokens, JWTs, secrets, certs, signed URLs, etc.
-- Built-in Presidio recognizers: CreditCardRecognizer, IbanRecognizer, UsBankRecognizer
-- SQLite-backed mapping store per session
+## Endpoints
+- POST /anonymize → { session_id, text|messages, entity_map, reverse_map }
+- POST /deanonymize → requires (reverse_map or entity_map), returns { session_id, text|messages }
+
+## Notes
+- Placeholders are HMAC-SHA256 derived: <<TYPE_aaaaaaaaaa>> (first 10 hex chars).
+- Deterministic per (session_id, entity_type, original); different sessions yield different tags.
+- No database is used; no `map_id` support.

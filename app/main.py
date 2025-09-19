@@ -1,50 +1,24 @@
-import logging, logging.config, uuid
-from pathlib import Path
-from fastapi import FastAPI, HTTPException
-from app.models.schemas import (Message, AnonymizeRequest, AnonymizeResponse,
-                                DeAnonymizeRequest, DeAnonymizeResponse, SessionResponse)
-from app.services.anonymizer import content_anonymizer, reverse_mapping, content_deanonymizer
-from app.services import storage
-from collections import defaultdict
+import logging.config
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from .core.config import settings
+from .api.routes import anonymize as anonymize_route
+from .api.routes import deanonymize as deanonymize_route
 
-try:
-    _CONF = Path(__file__).resolve().parents[1] / "logging.conf"
-    logging.config.fileConfig(_CONF)
-except Exception:
-    logging.basicConfig(level=logging.INFO)
+logging.config.fileConfig("app/core/logging.conf", disable_existing_loggers=False)
 
-logger = logging.getLogger("app")
-app = FastAPI(title="MCP Presidio Anonymizer API", version="1.3.0 (HMAC+DLP+Builtins)")
+app = FastAPI(title="Presidio Anonymize/Deanonymize API (No DB)")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-@app.post("/session", response_model=SessionResponse)
-def new_session():
-    sid = str(uuid.uuid4())
-    storage.create_session(sid)
-    return SessionResponse(session_id=sid)
+app.include_router(anonymize_route.router)
+app.include_router(deanonymize_route.router)
 
-@app.post("/anonymize", response_model=AnonymizeResponse)
-def anonymize(req: AnonymizeRequest):
-    storage.create_session(req.session_id)
-    entity_mapping = defaultdict(dict)
-    entity_counter = defaultdict(int)
-    out_messages = []
-    for msg in req.messages:
-        anon_text, entity_mapping, entity_counter = content_anonymizer(
-            msg.content, entity_mapping, entity_counter, session_id=req.session_id
-        )
-        out_messages.append(Message(content=anon_text))
-    rev = reverse_mapping(entity_mapping)
-    storage.save_mappings(req.session_id, rev)
-    return AnonymizeResponse(session_id=req.session_id, messages=out_messages)
-
-@app.post("/deanonymize", response_model=DeAnonymizeResponse)
-def deanonymize(req: DeAnonymizeRequest):
-    rev = storage.get_mapping(req.session_id)
-    if not rev:
-        raise HTTPException(status_code=404, detail="No mapping for session_id")
-    text = content_deanonymizer(req.text, rev)
-    return DeAnonymizeResponse(session_id=req.session_id, text=text)
-
-@app.get("/sessions")
-def sessions():
-    return {"sessions": storage.list_sessions()}
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host=settings.API_HOST, port=settings.API_PORT)

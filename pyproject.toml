@@ -1,0 +1,15 @@
+[project]
+name = "presidio-mcp-server-nodb"
+version = "0.1.0"
+dependencies = [
+  "fastapi",
+  "uvicorn",
+  "presidio-analyzer",
+  "presidio-anonymizer",
+  "cryptography",
+  "fastmcp",
+  "pydantic[dotenv]",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]

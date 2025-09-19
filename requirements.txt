@@ -1,7 +1,7 @@
-fastapi==0.111.0
-uvicorn==0.30.1
-pydantic==2.7.4
-presidio-analyzer==2.2.357
-spacy==3.8.2
-regex==2024.5.15
-mcp==1.1.0
+fastapi
+uvicorn
+presidio-analyzer
+presidio-anonymizer
+cryptography
+fastmcp
+pydantic[dotenv]
