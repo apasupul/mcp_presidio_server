@@ -1,0 +1,6 @@
+fastapi>=0.111.0
+uvicorn>=0.30.0
+pydantic>=2.7.0
+presidio-analyzer>=2.2.357
+regex>=2024.5.15
+mcp>=1.1.0
